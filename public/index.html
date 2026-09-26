@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order Risk Detector</title>
+  <style>
+    /* ── Reset & base ───────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --brand:     #2563eb;
+      --brand-dk:  #1d4ed8;
+      --approve:   #16a34a;
+      --review:    #d97706;
+      --hold:      #dc2626;
+      --low:       #16a34a;
+      --medium:    #d97706;
+      --high:      #dc2626;
+      --surface:   #f8fafc;
+      --card:      #ffffff;
+      --border:    #e2e8f0;
+      --text:      #0f172a;
+      --muted:     #64748b;
+      --radius:    10px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--surface);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    /* ── Layout ─────────────────────────────────────────────────────────── */
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    header p {
+      color: var(--muted);
+      margin-top: 0.4rem;
+      font-size: 0.95rem;
+    }
+
+    .badge-laya {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      border-radius: 99px;
+      padding: 0.2rem 0.75rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin-top: 0.6rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 1.5rem;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    @media (max-width: 600px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Card ───────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    /* ── Form ───────────────────────────────────────────────────────────── */
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 0.3rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    input[type="number"], input[type="text"] {
+      width: 100%;
+      padding: 0.55rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.95rem;
+      color: var(--text);
+      transition: border-color 0.15s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px #2563eb22;
+    }
+
+    .toggle-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .toggle-group button {
+      flex: 1;
+      padding: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      background: #f1f5f9;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+
+    .toggle-group button.active {
+      background: var(--brand);
+      color: #fff;
+      border-color: var(--brand);
+    }
+
+    /* ── Presets ────────────────────────────────────────────────────────── */
+    .presets {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.25rem;
+    }
+
+    .preset-btn {
+      padding: 0.3rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      background: #fff;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+
+    .preset-btn:hover { background: #f1f5f9; }
+
+    /* ── Submit button ──────────────────────────────────────────────────── */
+    #submit-btn {
+      width: 100%;
+      padding: 0.75rem;
+      background: var(--brand);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    #submit-btn:hover:not(:disabled) { background: var(--brand-dk); }
+    #submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* ── Result ─────────────────────────────────────────────────────────── */
+    #result-section { display: none; }
+
+    .action-banner {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius);
+      margin-bottom: 1.25rem;
+      border: 2px solid;
+    }
+
+    .action-banner.APPROVE { background: #f0fdf4; border-color: var(--approve); }
+    .action-banner.REVIEW  { background: #fffbeb; border-color: var(--review); }
+    .action-banner.HOLD    { background: #fef2f2; border-color: var(--hold); }
+
+    .action-icon { font-size: 2rem; }
+
+    .action-label {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .action-label.APPROVE { color: var(--approve); }
+    .action-label.REVIEW  { color: var(--review); }
+    .action-label.HOLD    { color: var(--hold); }
+
+    .action-sub {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 0.15rem;
+    }
+
+    .summary-text {
+      font-size: 0.9rem;
+      color: var(--text);
+      line-height: 1.6;
+      padding: 0.75rem 1rem;
+      background: #f8fafc;
+      border-radius: 6px;
+      border-left: 3px solid var(--border);
+      margin-bottom: 1.25rem;
+    }
+
+    /* ── Meter bars ─────────────────────────────────────────────────────── */
+    .meter-group { display: flex; flex-direction: column; gap: 0.9rem; }
+
+    .meter-item label {
+      display: flex;
+      justify-content: space-between;
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 0.83rem;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 0.3rem;
+    }
+
+    .meter-item label span { color: var(--muted); font-weight: 400; }
+
+    .meter-track {
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .meter-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.5s ease;
+      background: var(--brand);
+    }
+
+    .meter-fill.danger  { background: var(--hold); }
+    .meter-fill.warning { background: var(--review); }
+    .meter-fill.safe    { background: var(--approve); }
+
+    /* ── Action probabilities ───────────────────────────────────────────── */
+    .prob-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+    .prob-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.85rem;
+    }
+
+    .prob-label { min-width: 70px; font-weight: 500; }
+
+    .prob-track {
+      flex: 1;
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .prob-fill {
+      height: 100%;
+      border-radius: 99px;
+    }
+
+    .prob-fill.APPROVE { background: var(--approve); }
+    .prob-fill.REVIEW  { background: var(--review); }
+    .prob-fill.HOLD    { background: var(--hold); }
+
+    .prob-pct { min-width: 38px; text-align: right; color: var(--muted); font-size: 0.8rem; }
+
+    /* ── Risk level chip ────────────────────────────────────────────────── */
+    .risk-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 99px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .risk-chip.LOW    { background: #dcfce7; color: var(--low); }
+    .risk-chip.MEDIUM { background: #fef3c7; color: var(--medium); }
+    .risk-chip.HIGH   { background: #fee2e2; color: var(--high); }
+
+    /* ── Raw JSON toggle ────────────────────────────────────────────────── */
+    .json-toggle {
+      font-size: 0.8rem;
+      color: var(--brand);
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+      margin-top: 0.75rem;
+      text-decoration: underline;
+    }
+
+    #raw-json {
+      display: none;
+      margin-top: 0.75rem;
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: "Cascadia Code", "Fira Code", monospace;
+      font-size: 0.78rem;
+      line-height: 1.6;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    /* ── Error ──────────────────────────────────────────────────────────── */
+    .error-box {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 1rem;
+      color: var(--hold);
+      font-size: 0.9rem;
+    }
+
+    /* ── Spinner ────────────────────────────────────────────────────────── */
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2.5px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🛡️ Order Risk Detector</h1>
+      <p>Analyse e-commerce orders for fraud risk using AI decision modelling.</p>
+      <div class="badge-laya">⚡ Powered by Laya — non-autoregressive System 1 decision engine</div>
+    </header>
+
+    <div class="grid">
+      <!-- ── Input form ──────────────────────────────────────────────── -->
+      <div class="card">
+        <h2>📦 Order Details</h2>
+
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:0.9rem;">Try a preset:</p>
+        <div class="presets">
+          <button class="preset-btn" onclick="loadPreset('safe')">✅ Safe Order</button>
+          <button class="preset-btn" onclick="loadPreset('suspicious')">⚠️ Suspicious</button>
+          <button class="preset-btn" onclick="loadPreset('high-risk')">🚨 High Risk</button>
+        </div>
+
+        <form id="order-form">
+          <div class="form-group">
+            <label for="orderAmount">Order Amount (USD)</label>
+            <input type="number" id="orderAmount" min="0" step="0.01" value="850" required />
+          </div>
+
+          <div class="form-group">
+            <label for="customerAgeDays">Customer Account Age (days)</label>
+            <input type="number" id="customerAgeDays" min="0" step="1" value="2" required />
+          </div>
+
+          <div class="form-group">
+            <label for="previousOrders">Previous Successful Orders</label>
+            <input type="number" id="previousOrders" min="0" step="1" value="0" required />
+          </div>
+
+          <div class="form-group">
+            <label for="failedPayments">Failed Payment Attempts</label>
+            <input type="number" id="failedPayments" min="0" step="1" value="3" required />
+          </div>
+
+          <div class="form-group">
+            <label for="itemsCount">Number of Items</label>
+            <input type="number" id="itemsCount" min="1" step="1" value="8" required />
+          </div>
+
+          <div class="form-group">
+            <label>Shipping = Billing Address?</label>
+            <div class="toggle-group">
+              <button type="button" id="addr-match-yes" onclick="setToggle('shippingBillingMatch', true)">✅ Yes (Match)</button>
+              <button type="button" id="addr-match-no" class="active" onclick="setToggle('shippingBillingMatch', false)">❌ No (Mismatch)</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>International Order?</label>
+            <div class="toggle-group">
+              <button type="button" id="intl-yes" class="active" onclick="setToggle('internationalOrder', true)">🌍 Yes</button>
+              <button type="button" id="intl-no" onclick="setToggle('internationalOrder', false)">🏠 No</button>
+            </div>
+          </div>
+
+          <button type="submit" id="submit-btn">
+            <span id="btn-text">🔍 Analyse Order</span>
+            <div id="btn-spinner" class="spinner hidden"></div>
+          </button>
+        </form>
+      </div>
+
+      <!-- ── Result panel ────────────────────────────────────────────── -->
+      <div>
+        <!-- Empty state -->
+        <div id="empty-state" class="card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:320px;text-align:center;color:var(--muted);">
+          <div style="font-size:3rem;margin-bottom:1rem;">🤖</div>
+          <p style="font-size:0.95rem;">Submit an order to see<br>the Laya risk analysis.</p>
+        </div>
+
+        <!-- Error state -->
+        <div id="error-state" class="card hidden">
+          <h2>⚠️ Error</h2>
+          <div class="error-box" id="error-message"></div>
+        </div>
+
+        <!-- Result state -->
+        <div id="result-section" class="card">
+          <h2>
+            🧠 Laya Assessment
+            <span id="risk-chip" class="risk-chip" style="margin-left:0.5rem;vertical-align:middle;"></span>
+          </h2>
+
+          <!-- Action banner -->
+          <div id="action-banner" class="action-banner">
+            <div class="action-icon" id="action-icon"></div>
+            <div>
+              <div class="action-label" id="action-label"></div>
+              <div class="action-sub" id="action-sub"></div>
+            </div>
+          </div>
+
+          <!-- Summary -->
+          <div class="summary-text" id="summary-text"></div>
+
+          <!-- Threshold breakdown -->
+          <h3 style="font-size:0.85rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.75rem;">Action Thresholds</h3>
+          <div id="threshold-list" style="display:flex;flex-direction:column;gap:0.45rem;font-size:0.83rem;"></div>
+
+          <!-- Signal Meters -->
+          <h3 style="font-size:0.85rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin:1.25rem 0 0.75rem;">Signal Meters</h3>
+          <div class="meter-group">
+
+            <!-- Fraud Probability -->
+            <div class="meter-item">
+              <label>Fraud Probability <span style="font-weight:400;color:var(--muted);font-size:0.75rem;">(noul · 0–100%)</span> <span id="meter-fraud-pct"></span></label>
+              <div class="meter-track"><div class="meter-fill" id="meter-fraud"></div></div>
+            </div>
+
+            <!-- Review Needed -->
+            <div class="meter-item">
+              <label>Review Needed <span style="font-weight:400;color:var(--muted);font-size:0.75rem;">(noul · 0–100%)</span> <span id="meter-review-pct"></span></label>
+              <div class="meter-track"><div class="meter-fill warning" id="meter-review"></div></div>
+            </div>
+
+            <!-- Risk Score — segmented zone bar -->
+            <div class="meter-item">
+              <label>
+                Risk Score <span style="font-weight:400;color:var(--muted);font-size:0.75rem;">(score · 0–2)</span>
+                <span id="meter-score-label" style="margin-left:0.35rem;font-size:0.78rem;font-weight:700;"></span>
+              </label>
+              <!-- Zone track: green 0–1.15, amber 1.15–1.65, red 1.65–2 -->
+              <div style="position:relative;height:10px;border-radius:99px;overflow:hidden;background:linear-gradient(to right, var(--approve) 0%, var(--approve) 57.5%, var(--review) 57.5%, var(--review) 82.5%, var(--hold) 82.5%, var(--hold) 100%);opacity:0.25;" id="meter-score-zones"></div>
+              <div style="position:relative;height:10px;border-radius:99px;margin-top:-10px;">
+                <div class="meter-fill" id="meter-score" style="height:10px;border-radius:99px;"></div>
+              </div>
+              <!-- Zone labels -->
+              <div style="display:flex;font-size:0.68rem;color:var(--muted);margin-top:3px;position:relative;">
+                <span style="position:absolute;left:0">0</span>
+                <span style="position:absolute;left:57.5%;transform:translateX(-50%);color:var(--review);font-weight:600;">1.15</span>
+                <span style="position:absolute;left:82.5%;transform:translateX(-50%);color:var(--hold);font-weight:600;">1.65</span>
+                <span style="position:absolute;right:0">2</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Raw JSON -->
+          <button class="json-toggle" onclick="toggleRaw()">▶ Show raw Laya response</button>
+          <pre id="raw-json"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── State ────────────────────────────────────────────────────────────────
+    const toggleState = {
+      shippingBillingMatch: false,
+      internationalOrder: true,
+    };
+
+    // ── Toggle helpers ───────────────────────────────────────────────────────
+    function setToggle(field, value) {
+      toggleState[field] = value;
+      if (field === 'shippingBillingMatch') {
+        document.getElementById('addr-match-yes').classList.toggle('active', value === true);
+        document.getElementById('addr-match-no').classList.toggle('active', value === false);
+      } else if (field === 'internationalOrder') {
+        document.getElementById('intl-yes').classList.toggle('active', value === true);
+        document.getElementById('intl-no').classList.toggle('active', value === false);
+      }
+    }
+
+    // ── Presets ──────────────────────────────────────────────────────────────
+    const PRESETS = {
+      safe: {
+        orderAmount: 49,
+        customerAgeDays: 420,
+        previousOrders: 14,
+        failedPayments: 0,
+        itemsCount: 2,
+        shippingBillingMatch: true,
+        internationalOrder: false,
+      },
+      suspicious: {
+        orderAmount: 320,
+        customerAgeDays: 18,
+        previousOrders: 1,
+        failedPayments: 1,
+        itemsCount: 5,
+        shippingBillingMatch: false,
+        internationalOrder: false,
+      },
+      'high-risk': {
+        orderAmount: 1200,
+        customerAgeDays: 1,
+        previousOrders: 0,
+        failedPayments: 4,
+        itemsCount: 12,
+        shippingBillingMatch: false,
+        internationalOrder: true,
+      },
+    };
+
+    function loadPreset(name) {
+      const p = PRESETS[name];
+      document.getElementById('orderAmount').value = p.orderAmount;
+      document.getElementById('customerAgeDays').value = p.customerAgeDays;
+      document.getElementById('previousOrders').value = p.previousOrders;
+      document.getElementById('failedPayments').value = p.failedPayments;
+      document.getElementById('itemsCount').value = p.itemsCount;
+      setToggle('shippingBillingMatch', p.shippingBillingMatch);
+      setToggle('internationalOrder', p.internationalOrder);
+    }
+
+    // ── Form submit ──────────────────────────────────────────────────────────
+    document.getElementById('order-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const payload = {
+        orderAmount:          Number(document.getElementById('orderAmount').value),
+        customerAgeDays:      Number(document.getElementById('customerAgeDays').value),
+        previousOrders:       Number(document.getElementById('previousOrders').value),
+        failedPayments:       Number(document.getElementById('failedPayments').value),
+        itemsCount:           Number(document.getElementById('itemsCount').value),
+        shippingBillingMatch: toggleState.shippingBillingMatch,
+        internationalOrder:   toggleState.internationalOrder,
+      };
+
+      setLoading(true);
+      showEmpty();
+
+      try {
+        const res = await fetch('/api/analyse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showError(data.detail ?? data.error ?? `HTTP ${res.status}`);
+        } else {
+          showResult(data);
+        }
+      } catch (err) {
+        showError(`Network error: ${err.message}`);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    // ── UI helpers ───────────────────────────────────────────────────────────
+    function setLoading(on) {
+      document.getElementById('submit-btn').disabled = on;
+      document.getElementById('btn-text').textContent = on ? 'Analysing…' : '🔍 Analyse Order';
+      document.getElementById('btn-spinner').classList.toggle('hidden', !on);
+    }
+
+    function showEmpty() {
+      document.getElementById('empty-state').style.display = 'flex';
+      document.getElementById('result-section').style.display = 'none';
+      document.getElementById('error-state').classList.add('hidden');
+    }
+
+    function showError(msg) {
+      document.getElementById('empty-state').style.display = 'none';
+      document.getElementById('result-section').style.display = 'none';
+      document.getElementById('error-state').classList.remove('hidden');
+      document.getElementById('error-message').textContent = msg;
+    }
+
+    const ACTION_META = {
+      APPROVE: { icon: '✅', sub: 'Order is safe to fulfill immediately.', colorClass: 'APPROVE' },
+      REVIEW:  { icon: '🔍', sub: 'Hold for human review before fulfilling.', colorClass: 'REVIEW' },
+      HOLD:    { icon: '🚨', sub: 'Freeze order and investigate for fraud.', colorClass: 'HOLD' },
+    };
+
+    function showResult(data) {
+      document.getElementById('empty-state').style.display = 'none';
+      document.getElementById('error-state').classList.add('hidden');
+      document.getElementById('result-section').style.display = 'block';
+
+      const meta = ACTION_META[data.action] ?? ACTION_META.REVIEW;
+
+      // Action banner
+      const banner = document.getElementById('action-banner');
+      banner.className = `action-banner ${data.action}`;
+      document.getElementById('action-icon').textContent = meta.icon;
+      const labelEl = document.getElementById('action-label');
+      labelEl.textContent = data.action;
+      labelEl.className = `action-label ${data.action}`;
+      document.getElementById('action-sub').textContent = meta.sub;
+
+      // Risk chip
+      const chip = document.getElementById('risk-chip');
+      chip.textContent = `${data.riskLevel} RISK`;
+      chip.className = `risk-chip ${data.riskLevel}`;
+
+      // Summary
+      document.getElementById('summary-text').textContent = data.summary;
+
+      // Threshold breakdown
+      const tList = document.getElementById('threshold-list');
+      const fp = data.signals.fraudProbability;
+      const fs = data.signals.fraudScore;
+      const rn = data.signals.reviewNeeded;
+      const rows = [
+        { label: 'APPROVE if',  cond: `fraud prob < 30% AND score < 1.15 AND review < 55%`,
+          met: fp < 0.30 && fs < 1.15 && rn < 0.55, action: 'APPROVE' },
+        { label: 'HOLD if',     cond: `fraud prob ≥ 60% OR score ≥ 1.65`,
+          met: fp >= 0.60 || fs >= 1.65, action: 'HOLD' },
+        { label: 'REVIEW',      cond: `everything in between`,
+          met: data.action === 'REVIEW', action: 'REVIEW' },
+      ];
+      tList.innerHTML = rows.map(r => `
+        <div style="display:flex;align-items:center;gap:0.6rem;padding:0.4rem 0.6rem;border-radius:6px;background:${r.met ? 'var(--surface)' : 'transparent'};border:1px solid ${r.met ? 'var(--border)' : 'transparent'}">
+          <span style="font-weight:700;min-width:68px;color:var(--${r.action === 'APPROVE' ? 'approve' : r.action === 'HOLD' ? 'hold' : 'review'})">${r.label}</span>
+          <span style="color:var(--muted);flex:1">${r.cond}</span>
+          ${r.met ? `<span style="font-size:0.75rem;font-weight:700;color:var(--${r.action === 'APPROVE' ? 'approve' : r.action === 'HOLD' ? 'hold' : 'review'})">✓ MATCHED</span>` : ''}
+        </div>`).join('');
+
+      // Signal meters
+      setMeter('meter-fraud',  data.signals.fraudProbability, 'danger');
+      setMeter('meter-review', data.signals.reviewNeeded,     'warning');
+
+      // Risk score bar — color by zone and show rubric label
+      const rawLegend = data.signals.fraudScoreLegend;
+      const legendArr = Array.isArray(rawLegend) ? rawLegend : Object.values(rawLegend ?? {});
+      const scoreNorm = data.signals.fraudScore / 2;      // 0–1 for the bar
+      const scoreCls  = data.signals.fraudScore < 1.15 ? 'safe'
+                      : data.signals.fraudScore < 1.65 ? 'warning'
+                      : 'danger';
+      const scoreZone = data.signals.fraudScore < 1.15 ? legendArr[0] ?? 'none'
+                      : data.signals.fraudScore < 1.65 ? legendArr[1] ?? 'suspicious'
+                      : legendArr[2] ?? 'high';
+      const scoreZoneColor = data.signals.fraudScore < 1.15 ? 'var(--approve)'
+                           : data.signals.fraudScore < 1.65 ? 'var(--review)'
+                           : 'var(--hold)';
+      setMeter('meter-score', scoreNorm, scoreCls);
+      document.getElementById('meter-score-label').textContent = scoreZone.split('—')[0].trim();
+      document.getElementById('meter-score-label').style.color = scoreZoneColor;
+
+      document.getElementById('meter-fraud-pct').textContent  = pct(data.signals.fraudProbability);
+      document.getElementById('meter-review-pct').textContent = pct(data.signals.reviewNeeded);
+
+      // Raw JSON
+      document.getElementById('raw-json').textContent = JSON.stringify(data, null, 2);
+    }
+
+    function setMeter(id, value, cls) {
+      const el = document.getElementById(id);
+      el.style.width = `${Math.round(value * 100)}%`;
+      el.className = `meter-fill ${cls}`;
+    }
+
+    function pct(v) { return `${Math.round(v * 100)}%`; }
+
+    function toggleRaw() {
+      const el = document.getElementById('raw-json');
+      const btn = document.querySelector('.json-toggle');
+      const visible = el.style.display === 'block';
+      el.style.display = visible ? 'none' : 'block';
+      btn.textContent = visible ? '▶ Show raw Laya response' : '▼ Hide raw Laya response';
+    }
+  </script>
+</body>
+</html>
